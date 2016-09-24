@@ -7,8 +7,10 @@ import android.net.nsd.NsdManager;
 import org.junit.Test;
 
 import rx.observers.TestSubscriber;
+import rxbonjour.RxBonjour;
 import rxbonjour.base.BaseTest;
 import rxbonjour.exc.StaleContextException;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.model.BonjourEvent;
 
 import static org.mockito.Matchers.any;
@@ -97,6 +99,14 @@ public class JBBonjourDiscoveryTest extends BaseTest {
 		discovery.start(null, "_http._tcp").subscribe(subscriber);
 
 		subscriber.assertError(StaleContextException.class);
+	}
+
+	@Test public void testRaisesExceptionOnMalformedType() throws Exception {
+		TestSubscriber<BonjourEvent> subscriber = new TestSubscriber<>();
+
+		RxBonjour.newDiscovery(context, "not_a-type", true).subscribe(subscriber);
+
+		subscriber.assertError(TypeMalformedException.class);
 	}
 
 	// TODO Fill with more tests

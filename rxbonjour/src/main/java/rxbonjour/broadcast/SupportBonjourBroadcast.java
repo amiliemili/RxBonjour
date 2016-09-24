@@ -8,15 +8,18 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceInfo;
 
+import rx.AsyncEmitter;
 import rx.Observable;
-import rx.Subscriber;
-import rx.android.MainThreadSubscription;
+import rx.functions.Action1;
+import rxbonjour.RxBonjour;
 import rxbonjour.exc.BroadcastFailed;
 import rxbonjour.exc.StaleContextException;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.internal.BonjourSchedulers;
 import rxbonjour.model.BonjourEvent;
 import rxbonjour.model.BonjourService;
@@ -36,14 +39,19 @@ final class SupportBonjourBroadcast extends BonjourBroadcast<SupportUtils> {
 	}
 
 	@Override public Observable<BonjourEvent> start(Context context) {
+		// Verify service type
+		if (!RxBonjour.isBonjourType(this.type)) {
+			return Observable.error(new TypeMalformedException(this.type));
+		}
+
 		// Create a weak reference to the incoming Context
 		final WeakReference<Context> weakContext = new WeakReference<>(context);
 
-		Observable<BonjourEvent> obs = Observable.create(new Observable.OnSubscribe<BonjourEvent>() {
-			@Override public void call(Subscriber<? super BonjourEvent> subscriber) {
+		return Observable.fromEmitter(new Action1<AsyncEmitter<BonjourEvent>>() {
+			@Override public void call(final AsyncEmitter<BonjourEvent> emitter) {
 				Context context = weakContext.get();
 				if (context == null) {
-					subscriber.onError(new StaleContextException());
+					emitter.onError(new StaleContextException());
 					return;
 				}
 
@@ -59,17 +67,16 @@ final class SupportBonjourBroadcast extends BonjourBroadcast<SupportUtils> {
 					final ServiceInfo jmdnsService = createJmdnsService(bonjourService);
 					final JmDNS jmdns = utils.getManager(context);
 
-					subscriber.add(new MainThreadSubscription() {
-						@Override
-						protected void onUnsubscribe() {
+					emitter.setCancellation(new AsyncEmitter.Cancellable() {
+						@Override public void cancel() throws Exception {
 							jmdns.unregisterService(jmdnsService);
 							utils.decrementSubscriberCount();
 							lock.release();
 
-							Observable<Void> cleanUpObservable = Observable.create(new Observable.OnSubscribe<Void>() {
-								@Override public void call(final Subscriber<? super Void> subscriber) {
+							Observable<Boolean> cleanUpObservable = Observable.fromCallable(new Callable<Boolean>() {
+								@Override public Boolean call() throws Exception {
 									utils.closeIfNecessary();
-									subscriber.unsubscribe();
+									return true;
 								}
 							});
 
@@ -81,15 +88,13 @@ final class SupportBonjourBroadcast extends BonjourBroadcast<SupportUtils> {
 
 					jmdns.registerService(jmdnsService);
 					utils.incrementSubscriberCount();
-					subscriber.onNext(new BonjourEvent(BonjourEvent.Type.ADDED, bonjourService));
+					emitter.onNext(new BonjourEvent(BonjourEvent.Type.ADDED, bonjourService));
+
 				} catch (IOException e) {
-					subscriber.onError(new BroadcastFailed(SupportBonjourBroadcast.class, type));
+					emitter.onError(new BroadcastFailed(SupportBonjourBroadcast.class, type));
 				}
 			}
-		});
-
-		return obs
-				.compose(BonjourSchedulers.<BonjourEvent>startSchedulers());
+		}, AsyncEmitter.BackpressureMode.BUFFER);
 	}
 
 	private ServiceInfo createJmdnsService(BonjourService serviceInfo) {

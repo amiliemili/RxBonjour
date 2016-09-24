@@ -13,12 +13,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import rx.AsyncEmitter;
 import rx.Observable;
-import rx.Subscriber;
-import rx.android.MainThreadSubscription;
+import rx.functions.Action1;
+import rxbonjour.RxBonjour;
 import rxbonjour.exc.BroadcastFailed;
 import rxbonjour.exc.StaleContextException;
-import rxbonjour.internal.BonjourSchedulers;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.model.BonjourEvent;
 import rxbonjour.model.BonjourService;
 import rxbonjour.utils.JBUtils;
@@ -37,15 +38,19 @@ final class JBBonjourBroadcast extends BonjourBroadcast<JBUtils> {
 	}
 
 	@Override public Observable<BonjourEvent> start(Context context) {
+		// Verify service type
+		if (!RxBonjour.isBonjourType(this.type)) {
+			return Observable.error(new TypeMalformedException(this.type));
+		}
+
 		// Create a weak reference to the incoming Context
 		final WeakReference<Context> weakContext = new WeakReference<>(context);
 
-		Observable<BonjourEvent> obs = Observable.create(new Observable.OnSubscribe<BonjourEvent>() {
-			@Override
-			public void call(final Subscriber<? super BonjourEvent> subscriber) {
+		return Observable.fromEmitter(new Action1<AsyncEmitter<BonjourEvent>>() {
+			@Override public void call(final AsyncEmitter<BonjourEvent> emitter) {
 				Context context = weakContext.get();
 				if (context == null) {
-					subscriber.onError(new StaleContextException());
+					emitter.onError(new StaleContextException());
 					return;
 				}
 
@@ -57,7 +62,7 @@ final class JBBonjourBroadcast extends BonjourBroadcast<JBUtils> {
 					final NsdManager.RegistrationListener listener = new NsdManager.RegistrationListener() {
 						@Override
 						public void onRegistrationFailed(NsdServiceInfo info, int errorCode) {
-							subscriber.onError(new BroadcastFailed(JBBonjourBroadcast.class,
+							emitter.onError(new BroadcastFailed(JBBonjourBroadcast.class,
 									bonjourService.getName(), errorCode));
 						}
 
@@ -67,20 +72,19 @@ final class JBBonjourBroadcast extends BonjourBroadcast<JBUtils> {
 
 						@Override
 						public void onServiceRegistered(NsdServiceInfo info) {
-							subscriber.onNext(new BonjourEvent(BonjourEvent.Type.ADDED, bonjourService));
+							emitter.onNext(new BonjourEvent(BonjourEvent.Type.ADDED, bonjourService));
 						}
 
 						@Override
 						public void onServiceUnregistered(NsdServiceInfo info) {
-							subscriber.onNext(new BonjourEvent(BonjourEvent.Type.REMOVED, mapNsdServiceInfo(info)));
+							emitter.onNext(new BonjourEvent(BonjourEvent.Type.REMOVED, mapNsdServiceInfo(info)));
 						}
 					};
 
 					nsdManager.registerService(nsdService, NsdManager.PROTOCOL_DNS_SD, listener);
 
-					subscriber.add(new MainThreadSubscription() {
-						@Override
-						protected void onUnsubscribe() {
+					emitter.setCancellation(new AsyncEmitter.Cancellable() {
+						@Override public void cancel() throws Exception {
 							try {
 								nsdManager.unregisterService(listener);
 							} catch (IllegalArgumentException ignored) {
@@ -89,13 +93,10 @@ final class JBBonjourBroadcast extends BonjourBroadcast<JBUtils> {
 						}
 					});
 				} catch (IOException e) {
-					subscriber.onError(new BroadcastFailed(JBBonjourBroadcast.class, type));
+					emitter.onError(new BroadcastFailed(JBBonjourBroadcast.class, type));
 				}
 			}
-		});
-
-		return obs
-				.compose(BonjourSchedulers.<BonjourEvent>startSchedulers());
+		}, AsyncEmitter.BackpressureMode.BUFFER);
 	}
 
 	private BonjourService mapNsdServiceInfo(NsdServiceInfo info) {

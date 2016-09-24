@@ -14,6 +14,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import rx.observers.TestSubscriber;
 import rxbonjour.base.BaseTest;
 import rxbonjour.exc.StaleContextException;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.model.BonjourEvent;
 
 import static org.mockito.Matchers.any;
@@ -65,5 +66,15 @@ public class JBBonjourBroadcastTest extends BaseTest {
         broadcast.start(null).subscribe(subscriber);
 
         subscriber.assertError(StaleContextException.class);
+    }
+
+    @Test public void testRaisesExceptionOnMalformedType() throws Exception {
+        BonjourBroadcastBuilder builder = PowerMockito.spy(JBBonjourBroadcast.newBuilder("not_a-type"));
+        BonjourBroadcast<?> broadcast = new JBBonjourBroadcast(builder);
+        TestSubscriber<BonjourEvent> subscriber = new TestSubscriber<>();
+
+        broadcast.start(context).subscribe(subscriber);
+
+        subscriber.assertError(TypeMalformedException.class);
     }
 }

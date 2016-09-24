@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.util.Enumeration;
+import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,9 +19,9 @@ import javax.jmdns.impl.DNSIncoming;
 import javax.jmdns.impl.constants.DNSRecordClass;
 import javax.jmdns.impl.constants.DNSRecordType;
 
+import rx.AsyncEmitter;
 import rx.Observable;
-import rx.Subscriber;
-import rx.android.MainThreadSubscription;
+import rx.functions.Action1;
 import rxbonjour.exc.DiscoveryFailed;
 import rxbonjour.exc.StaleContextException;
 import rxbonjour.internal.BonjourSchedulers;
@@ -42,10 +43,14 @@ final class SupportBonjourDiscovery extends BonjourDiscovery<SupportUtils> {
 		Logger.getLogger(DNSIncoming.MessageInputStream.class.getName()).setLevel(Level.OFF);
 	}
 
-	/** Suffix appended to input types */
+	/**
+	 * Suffix appended to input types
+	 */
 	private static final String SUFFIX = ".local.";
 
-	/** Tag to associate with the multicast lock */
+	/**
+	 * Tag to associate with the multicast lock
+	 */
 	private static final String LOCK_TAG = "RxBonjourDiscovery";
 
 	/**
@@ -101,11 +106,11 @@ final class SupportBonjourDiscovery extends BonjourDiscovery<SupportUtils> {
 		// Create a weak reference to the incoming Context
 		final WeakReference<Context> weakContext = new WeakReference<>(context);
 
-		return Observable.create(new Observable.OnSubscribe<BonjourEvent>() {
-			@Override public void call(final Subscriber<? super BonjourEvent> subscriber) {
+		return Observable.fromEmitter(new Action1<AsyncEmitter<BonjourEvent>>() {
+			@Override public void call(final AsyncEmitter<BonjourEvent> emitter) {
 				Context context = weakContext.get();
 				if (context == null) {
-					subscriber.onError(new StaleContextException());
+					emitter.onError(new StaleContextException());
 					return;
 				}
 
@@ -116,15 +121,11 @@ final class SupportBonjourDiscovery extends BonjourDiscovery<SupportUtils> {
 					}
 
 					@Override public void serviceRemoved(ServiceEvent event) {
-						if (!subscriber.isUnsubscribed()) {
-							subscriber.onNext(newBonjourEvent(BonjourEvent.Type.REMOVED, event));
-						}
+						emitter.onNext(newBonjourEvent(BonjourEvent.Type.REMOVED, event));
 					}
 
 					@Override public void serviceResolved(ServiceEvent event) {
-						if (!subscriber.isUnsubscribed()) {
-							subscriber.onNext(newBonjourEvent(BonjourEvent.Type.ADDED, event));
-						}
+						emitter.onNext(newBonjourEvent(BonjourEvent.Type.ADDED, event));
 					}
 				};
 
@@ -139,24 +140,23 @@ final class SupportBonjourDiscovery extends BonjourDiscovery<SupportUtils> {
 					final JmDNS jmdns = utils.getManager(context);
 
 					// Add onUnsubscribe() hook
-					subscriber.add(new MainThreadSubscription() {
-						@Override protected void onUnsubscribe() {
+					emitter.setCancellation(new AsyncEmitter.Cancellable() {
+						@Override public void cancel() throws Exception {
 							// Release the lock and clean up the JmDNS client
 							jmdns.removeServiceListener(dnsType, listener);
 							utils.decrementSubscriberCount();
 
-							Observable<Void> cleanUpObservable = Observable.create(new Observable.OnSubscribe<Void>() {
-								@Override public void call(final Subscriber<? super Void> subscriber) {
+							Observable<Boolean> cleanUpObservable = Observable.fromCallable(new Callable<Boolean>() {
+								@Override public Boolean call() throws Exception {
 									// Release the held multicast lock
 									lock.release();
 
 									// Close the JmDNS instance if no more subscribers remain
 									utils.closeIfNecessary();
-
-									// Unsubscribe from the observable automatically
-									subscriber.unsubscribe();
+									return true;
 								}
 							});
+
 							cleanUpObservable
 									.compose(BonjourSchedulers.cleanupSchedulers())
 									.subscribe();
@@ -168,9 +168,9 @@ final class SupportBonjourDiscovery extends BonjourDiscovery<SupportUtils> {
 					utils.incrementSubscriberCount();
 
 				} catch (IOException e) {
-					subscriber.onError(new DiscoveryFailed(SupportBonjourDiscovery.class, dnsType));
+					emitter.onError(new DiscoveryFailed(SupportBonjourDiscovery.class, dnsType));
 				}
 			}
-		});
+		}, AsyncEmitter.BackpressureMode.BUFFER);
 	}
 }

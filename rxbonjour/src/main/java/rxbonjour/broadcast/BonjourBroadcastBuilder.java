@@ -1,10 +1,15 @@
 package rxbonjour.broadcast;
 
+import android.content.Context;
 import android.support.annotation.Nullable;
 
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
+
+import rx.Observable;
+import rxbonjour.exc.TypeMalformedException;
+import rxbonjour.model.BonjourEvent;
 
 public abstract class BonjourBroadcastBuilder {
 
@@ -44,6 +49,20 @@ public abstract class BonjourBroadcastBuilder {
 		return this;
 	}
 
+	/**
+	 * Starts broadcasting the configured Bonjour service.
+	 * <p/>
+	 * A {@link TypeMalformedException} is emitted after subscribing if the input type does not obey Bonjour type specifications. If you intend
+	 * to use this method with arbitrary types that can be provided by user input, it is highly encouraged to verify this input
+	 * using {@link rxbonjour.RxBonjour#isBonjourType(String)} <b>before</b> calling this method!
+	 *
+	 * @param context Context used to start the broadcast
+	 * @return An Observable for Bonjour events
+	 */
+	public final Observable<BonjourEvent> start(Context context) {
+		return this.build().start(context);
+	}
+
 	/* Begin package */
 
 	@Nullable final InetAddress address() {
@@ -68,5 +87,5 @@ public abstract class BonjourBroadcastBuilder {
 
 	/* Begin abstract */
 
-	public abstract BonjourBroadcast<?> build();
+	protected abstract BonjourBroadcast<?> build();
 }

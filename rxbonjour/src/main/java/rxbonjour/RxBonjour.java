@@ -2,11 +2,11 @@ package rxbonjour;
 
 import android.content.Context;
 
+import rx.Observable;
 import rxbonjour.broadcast.BonjourBroadcast;
 import rxbonjour.broadcast.BonjourBroadcastBuilder;
 import rxbonjour.discovery.BonjourDiscovery;
 import rxbonjour.exc.TypeMalformedException;
-import rxbonjour.internal.BonjourSchedulers;
 import rxbonjour.model.BonjourEvent;
 
 /**
@@ -22,26 +22,13 @@ public final class RxBonjour {
 	}
 
 	/**
-	 * @deprecated Use {@link #newDiscovery(Context, String)} instead.
-	 */
-	public static rx.Observable<BonjourEvent> startDiscovery(Context context, String type) {
-		return newDiscovery(context, type);
-	}
-
-	/**
-	 * @deprecated Use {@link #newDiscovery(Context, String, boolean)} instead.
-	 */
-	public static rx.Observable<BonjourEvent> startDiscovery(Context context, String type, boolean useNsdManager) {
-		return newDiscovery(context, type, useNsdManager);
-	}
-
-	/**
 	 * Starts a Bonjour service discovery for the provided service type.
+	 * <p/>
 	 * This method utilizes the support implementation with JmDNS as its backbone,
 	 * seeing as the official NsdManager APIs are subject to multiple deal-breaking bugs. If you really want to use NsdManager on devices that
 	 * support it (API level 16 or greater), use {@link #newDiscovery(Context, String, boolean)} and pass in <b>true</b> as the final argument.
-	 * This method's return Observable is scheduled to run on an I/O thread and notify subscribers on the main thread.
-	 * This method will throw a Runtime Exception if the input type does not obey Bonjour type specifications. If you intend
+	 * <p/>
+	 * A {@link TypeMalformedException} is emitted after subscribing if the input type does not obey Bonjour type specifications. If you intend
 	 * to use this method with arbitrary types that can be provided by user input, it is highly encouraged to verify this input
 	 * using {@link #isBonjourType(String)} <b>before</b> calling this method!
 	 *
@@ -58,14 +45,12 @@ public final class RxBonjour {
 
 	/**
 	 * Starts a Bonjour service discovery for the provided service type.
-	 *
+	 * <p/>
 	 * This method chooses the correct NSD implementation based on the device's API level. Please note that the implementation used on Jelly Bean
 	 * and up is subject to multiple deal-breaking bugs, so whenever possible, the support implementation using JmDNS should be used until Google
 	 * resolves these known issues with NsdManager.
-	 *
-	 * This method's return Observable is scheduled to run on an I/O thread and notify subscribers on the main thread.
-	 *
-	 * This method will throw a Runtime Exception if the input type does not obey Bonjour type specifications. If you intend
+	 * <p/>
+	 * A {@link TypeMalformedException} is emitted after subscribing if the input type does not obey Bonjour type specifications. If you intend
 	 * to use this method with arbitrary types that can be provided by user input, it is highly encouraged to verify this input
 	 * using {@link #isBonjourType(String)} <b>before</b> calling this method!
 	 *
@@ -78,24 +63,42 @@ public final class RxBonjour {
 	 */
 	public static rx.Observable<BonjourEvent> newDiscovery(Context context, String type, boolean forceNsdManager) {
 		// Verify input
-		if (!isBonjourType(type)) throw new TypeMalformedException(type);
+		if (!isBonjourType(type)) {
+			return Observable.error(new TypeMalformedException(type));
+		}
 
-		// Choose discovery strategy
+		// Choose discovery strategy and create the Observable
 		BonjourDiscovery<?> discovery = BonjourDiscovery.get(forceNsdManager);
-
-		// Create the discovery Observable and pre-configure it
-		return discovery.start(context, type)
-				.compose(BonjourSchedulers.<BonjourEvent>startSchedulers());
+		return discovery.start(context, type);
 	}
 
+	/**
+	 * Factory to receive a Builder to create a Bonjour broadcast for the provided service type.
+	 * <p/>
+	 * This method utilizes the support implementation with JmDNS as its backbone,
+	 * seeing as the official NsdManager APIs are subject to multiple deal-breaking bugs. If you really want to use NsdManager on devices that
+	 * support it (API level 16 or greater), use {@link #newBroadcast(String, boolean)} and pass in <b>true</b> as the final argument.
+	 *
+	 * @param type Type of service to discover
+	 * @return A Builder object on which the broadcast can be configured
+	 */
 	public static BonjourBroadcastBuilder newBroadcast(String type) {
 		return newBroadcast(type, false);
 	}
 
+	/**
+	 * Factory to receive a Builder to create a Bonjour broadcast for the provided service type.
+	 * <p/>
+	 * This method chooses the correct NSD implementation based on the device's API level. Please note that the implementation used on Jelly Bean
+	 * and up is subject to multiple deal-breaking bugs, so whenever possible, the support implementation using JmDNS should be used until Google
+	 * resolves these known issues with NsdManager.
+	 * <p/>
+	 *
+	 * @param type            Type of service to discover
+	 * @param forceNsdManager Whether or not to force the usage of Android's NsdManager on supported devices
+	 * @return A Builder object on which the broadcast can be configured
+	 */
 	public static BonjourBroadcastBuilder newBroadcast(String type, boolean forceNsdManager) {
-		// Verify input
-		if (!isBonjourType(type)) throw new TypeMalformedException(type);
-
 		// Choose broadcast strategy and return its Builder object
 		return BonjourBroadcast.newBuilder(type, forceNsdManager);
 	}

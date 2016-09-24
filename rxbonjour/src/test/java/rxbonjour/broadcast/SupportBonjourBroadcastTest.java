@@ -18,6 +18,7 @@ import javax.jmdns.impl.DNSStatefulObject;
 import rx.observers.TestSubscriber;
 import rxbonjour.base.BaseTest;
 import rxbonjour.exc.StaleContextException;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.model.BonjourEvent;
 
 import static junit.framework.Assert.assertEquals;
@@ -144,5 +145,15 @@ public class SupportBonjourBroadcastTest extends BaseTest {
         broadcast.start(null).subscribe(subscriber);
 
         subscriber.assertError(StaleContextException.class);
+    }
+
+    @Test public void testRaisesExceptionOnMalformedType() throws Exception {
+        BonjourBroadcastBuilder builder = PowerMockito.spy(SupportBonjourBroadcast.newBuilder("not_a-type"));
+        BonjourBroadcast<?> broadcast = builder.build();
+        TestSubscriber<BonjourEvent> subscriber = new TestSubscriber<>();
+
+        broadcast.start(context).subscribe(subscriber);
+
+        subscriber.assertError(TypeMalformedException.class);
     }
 }

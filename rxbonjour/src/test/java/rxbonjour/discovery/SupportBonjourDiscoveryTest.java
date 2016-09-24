@@ -14,8 +14,10 @@ import javax.jmdns.ServiceListener;
 import javax.jmdns.impl.DNSStatefulObject;
 
 import rx.observers.TestSubscriber;
+import rxbonjour.RxBonjour;
 import rxbonjour.base.BaseTest;
 import rxbonjour.exc.StaleContextException;
+import rxbonjour.exc.TypeMalformedException;
 import rxbonjour.model.BonjourEvent;
 
 import static org.mockito.BDDMockito.given;
@@ -137,6 +139,14 @@ public class SupportBonjourDiscoveryTest extends BaseTest {
 		discovery.start(null, "_http._tcp").subscribe(subscriber);
 
 		subscriber.assertError(StaleContextException.class);
+	}
+
+	@Test public void testRaisesExceptionOnMalformedType() throws Exception {
+		TestSubscriber<BonjourEvent> subscriber = new TestSubscriber<>();
+
+		RxBonjour.newDiscovery(context, "not_a-type", false).subscribe(subscriber);
+
+		subscriber.assertError(TypeMalformedException.class);
 	}
 
 	// TODO Fill with more tests
