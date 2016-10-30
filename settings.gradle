@@ -1,2 +1,4 @@
-include ':rxbonjour'
+include ':rxbonjour-core'
+include ':rxbonjour-driver-rxjava'
+include ':rxbonjour-driver-rxjava2'
 include ':example'

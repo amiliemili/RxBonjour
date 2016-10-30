@@ -1,0 +1,41 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion COMPILE_SDK_VERSION
+    buildToolsVersion BUILD_TOOLS_VERSION
+
+    defaultConfig {
+        minSdkVersion MIN_SDK_VERSION
+        targetSdkVersion TARGET_SDK_VERSION
+        versionName VERSION_NAME
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    // @formatter:off
+    compile project(':rxbonjour-core')
+
+    compile "io.reactivex.rxjava2:rxandroid:$RXANDROID2_VERSION"    // Reactive extensions
+    compile "io.reactivex.rxjava2:rxjava:$RXJAVA2_VERSION"          // Reactive extensions
+
+    testCompile "junit:junit:${JUNIT_VERSION}"                                      // Unit Testing
+    testCompile "org.mockito:mockito-core:${MOCKITO_VERSION}"                       // Mocking Framework
+    testCompile "org.powermock:powermock-api-mockito:${POWERMOCK_VERSION}"          // Mocking Framework extensions
+    testCompile "org.powermock:powermock-module-junit4:${POWERMOCK_VERSION}"        // Mocking Framework extensions
+    // @formatter:on
+}
+
+afterEvaluate {
+    tasks.withType(Javadoc).each {
+        it.classpath += configurations.compile
+        it.failOnError = false
+    }
+}
+
+ext.mavenArtifactId = 'rxbonjour-driver-rxjava2'
+ext.libraryName = 'RxBonjour: RxJava2 Driver'
+apply from: new File(rootDir, "upload.gradle")

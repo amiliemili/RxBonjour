@@ -1,0 +1,26 @@
+ext {
+    bintrayRepo = 'maven'
+    bintrayName = 'RxBonjour'
+
+    publishedGroupId = GROUP_NAME
+    libraryName = project.ext.libraryName
+    artifact = project.ext.mavenArtifactId
+
+    libraryDescription = 'Reactive spice added to Android\'s network service discovery API.'
+
+    siteUrl = 'https://github.com/aurae/RxBonjour'
+    gitUrl = 'https://github.com/aurae/RxBonjour.git'
+
+    libraryVersion = VERSION_NAME
+
+    developerId = 'aurae'
+    developerName = 'Marcel Schnelle'
+    developerEmail = 'schnellemarcel@gmail.com'
+
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
+}
+
+apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'
+apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/bintrayv1.gradle'

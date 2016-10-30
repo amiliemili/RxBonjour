@@ -1,12 +1,16 @@
 <resources>
 	<string name="app_name">RxBonjour Example</string>
 
+	<string name="tv_introduction">Say "Hi!" to RxBonjour, a wrapper around Android\'s network service discovery functionalities with a support implementation for devices below Jelly Bean, going down all the way to API level 9.</string>
 	<string name="tv_empty">No results…</string>
+	<string name="tv_discovery">Discover Services</string>
+	<string name="tv_broadcast">Broadcast Service</string>
 	<string name="tv_notxtrecords">No TXT records resolved</string>
 	<string name="et_initialtype">_http._tcp</string>
 	<string name="spinner_prompt">Select Implementation</string>
 	<string name="hint_type">Enter Service Type (e.g. \'_http._tcp\')…</string>
-	<string name="button_apply">Apply</string>
+	<string name="button_discover">Discover</string>
+	<string name="button_broadcast">Broadcast</string>
 	<string name="toast_invalidtype">\'%s\' is not a valid Bonjour type!</string>
 	<string name="format_host_address_v4">IPv4: %1$s:%2$s</string>
 	<string name="format_host_address_v6">IPv6: %1$s:%2$s</string>

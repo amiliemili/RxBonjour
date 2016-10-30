@@ -20,8 +20,9 @@ android {
 }
 
 dependencies {
-    compile project(':rxbonjour')
+    compile project(':rxbonjour-driver-rxjava2')
     compile "com.jakewharton:butterknife:$BUTTERKNIFE_VERSION"
+    annotationProcessor "com.jakewharton:butterknife-compiler:$BUTTERKNIFE_VERSION"
     compile "com.android.support:appcompat-v7:$SUPPORT_LIBRARY_VERSION"
     compile "com.android.support:recyclerview-v7:$SUPPORT_LIBRARY_VERSION"
 }

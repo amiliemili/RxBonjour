@@ -1,0 +1,35 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion COMPILE_SDK_VERSION
+    buildToolsVersion BUILD_TOOLS_VERSION
+
+    defaultConfig {
+        minSdkVersion MIN_SDK_VERSION
+        targetSdkVersion TARGET_SDK_VERSION
+        versionName VERSION_NAME
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+dependencies {
+    // @formatter:off
+    compile "com.android.support:support-annotations:$SUPPORT_LIBRARY_VERSION"      // Support annotations
+    compile "org.jmdns:jmdns:$JMDNS_VERSION"                                        // Network Service Discovery (pre-JB)
+
+    testCompile "junit:junit:${JUNIT_VERSION}"                                      // Unit Testing
+    testCompile "org.mockito:mockito-core:${MOCKITO_VERSION}"                       // Mocking Framework
+    testCompile "org.powermock:powermock-api-mockito:${POWERMOCK_VERSION}"          // Mocking Framework extensions
+    testCompile "org.powermock:powermock-module-junit4:${POWERMOCK_VERSION}"        // Mocking Framework extensions
+    // @formatter:on
+}
+
+afterEvaluate {
+    tasks.withType(Javadoc).each {
+        it.classpath += configurations.compile
+        it.failOnError = false
+    }
+}
