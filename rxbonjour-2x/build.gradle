@@ -36,6 +36,6 @@ afterEvaluate {
     }
 }
 
-ext.mavenArtifactId = 'rxbonjour-driver-rxjava2'
+ext.mavenArtifactId = 'rxbonjour-2x'
 ext.libraryName = 'RxBonjour: RxJava2 Driver'
 apply from: new File(rootDir, "upload.gradle")

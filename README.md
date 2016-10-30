@@ -3,11 +3,17 @@ Say "Hi!" to RxBonjour, a wrapper around Android's network service discovery fun
 
 ## Download
 
-`RxBonjour` is available on `jcenter()`, and provides compatibility for both RxJava 1.x and 2.x. Depending on your stack, choose **one** of the following:
+`RxBonjour` is available on `Bintray` (jcenter coming soon), and provides compatibility for both RxJava 1.x and 2.x. Depending on your stack, choose **one** of the following:
 
 ```groovy
-compile "de.mannodermaus:rxbonjour-driver-rxjava:______"
-compile "de.mannodermaus:rxbonjour-driver-rxjava2:______"
+buildscript {
+    repositories {
+        maven { url "https://dl.bintray.com/aurae/maven" }
+    }
+}
+
+compile "de.mannodermaus:rxbonjour-1x:1.0.0"
+compile "de.mannodermaus:rxbonjour-2x:1.0.0"
 ```
 
 ## Discovery

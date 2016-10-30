@@ -33,3 +33,7 @@ afterEvaluate {
         it.failOnError = false
     }
 }
+
+ext.mavenArtifactId = 'rxbonjour-core'
+ext.libraryName = 'RxBonjour: Core'
+apply from: new File(rootDir, "upload.gradle")
