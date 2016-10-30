@@ -2,7 +2,6 @@ package rxbonjour;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
@@ -78,7 +77,6 @@ public final class RxBonjour extends RxBonjourBase {
 				// Stop listening for events when unsubscribing
 				emitter.setDisposable(new MainThreadDisposable() {
 					@Override protected void onDispose() {
-						Log.d("RXB", "onUnsubscribe: HALLO?");
 						discovery.stop();
 					}
 				});
